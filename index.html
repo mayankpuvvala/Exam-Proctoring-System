@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Activity Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: rgba(255, 160, 122, 0.747);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        .section {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin: 10px;
+            flex: 1 1 calc(50% - 20px);
+            box-sizing: border-box;
+            background-color: #f8f9fa;
+            color: #333;
+            font-size: medium;
+            border-radius: 30px;
+            height: 280px;
+        }
+        .inactive-time {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="section">
+        <h2>Live Video Attention</h2>
+        <!-- Drowsiness detection content goes here -->
+    </div>
+    <div class="section">
+        <h2>Audio Frequency Graph</h2>
+        <!-- Audio frequency graph content goes here -->
+    </div>
+    <div class="section">
+        <h2>Active Voice Time During Class</h2>
+        <!-- Active voice time content goes here -->
+    </div>
+    <div class="section">
+        <h2>Inactive Tab Time</h2>
+        <p>The student was using other tabs for <span class="inactive-time">0</span> seconds.</p>
+    </div>
+
+    <script>
+        var inactiveTime = 0;
+        var isActive = true;
+        var timer = null;
+
+        window.onfocus = function () { 
+            isActive = true; 
+            clearInterval(timer);
+        }; 
+
+        window.onblur = function () { 
+            isActive = false; 
+            timer = setInterval(function(){
+                if(!isActive){
+                    inactiveTime++;
+                    document.querySelector('.inactive-time').textContent = inactiveTime;
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
