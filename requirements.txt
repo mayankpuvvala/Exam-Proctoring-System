@@ -1,0 +1,8 @@
+Flask==2.0.1
+numpy==1.21.0
+opencv-python==4.5.2.54
+dlib==19.22.0
+pygame==2.0.1
+sounddevice==0.4.1
+scipy==1.7.0
+mediapipe==0.8.6.2
