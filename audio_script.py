@@ -1,31 +1,13 @@
 import cv2
-import dlib
 import numpy as np
-from scipy.spatial import distance as dist
 from flask import Flask, render_template, Response
 import pygame
-import sounddevice as sd
 from threading import Thread
 import time
 import mediapipe as mp
-from mouth import detect_mouth_opening
-
+from app import audio_processor  # Import the audio processor
 
 app = Flask(__name__)
-
-# Load face detector and facial landmark predictor
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-
-# Constants for eye aspect ratio (EAR) and blink detection
-EAR_THRESHOLD = 0.25
-CONSECUTIVE_FRAMES = 20
-BLINK_DURATION_THRESHOLD = 4  # Blink duration threshold in seconds
-
-# Initialize variables for gaze tracking and alarm
-alarm_active = False
-eyes_visible = True
-last_blink_time = None
 
 # Initialize Pygame for playing the alarm sound
 pygame.mixer.init()
@@ -37,8 +19,10 @@ mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 mp_drawing = mp.solutions.drawing_utils
 
+alarm_active = False
+
 def detect_head_pose(frame):
-    global alarm_active, eyes_visible, last_blink_time
+    global alarm_active
 
     image = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
     results = face_mesh.process(image)
@@ -99,53 +83,6 @@ def stop_alarm():
     pygame.mixer.music.stop()
     alarm_active = False
 
-mic = 1
-threshold = 0.02
-stream = sd.InputStream(device=mic, channels=1, samplerate=44100, blocksize=1024)
-
-class AudioProcessor:
-    def __init__(self):
-        self.active_voice_time = 0
-        self.active = False
-        self.start_time = None
-
-        # Start a separate thread for audio processing
-        self.audio_thread = Thread(target=self.update_active_voice_time)
-        self.audio_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
-
-    def start_audio(self):
-        global stream
-        stream.start()
-        self.audio_thread.start()
-
-    def stop_audio(self):
-        global stream
-        stream.stop()
-        stream.close()
-
-    def update_active_voice_time(self):
-        global stream
-        while stream.active:
-            # Read audio data from the microphone
-            data, overflowed = stream.read(1024)
-
-            # Calculate the RMS volume
-            rms = np.sqrt(np.mean(data**2))
-
-            # Update active voice time
-            if rms > threshold and not self.active:
-                # Start of voice activity
-                self.active = True
-                self.start_time = time.time()
-            elif rms <= threshold and self.active:
-                # End of voice activity
-                self.active = False
-                end_time = time.time()
-                self.active_voice_time += end_time - self.start_time
-
-# Create instance of AudioProcessor
-audio_processor = AudioProcessor()
-
 def generate_frames():
     global alarm_active
 
@@ -156,7 +93,12 @@ def generate_frames():
             break
 
         frame = detect_head_pose(frame)
-        frame = detect_mouth_opening(frame)  # Add this line to detect mouth opening
+
+        if audio_processor.is_talking() and not alarm_active:
+            start_alarm()
+        elif not audio_processor.is_talking() and alarm_active:
+            stop_alarm()
+
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
@@ -169,16 +111,6 @@ def index():
 @app.route('/video_feed')
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-@app.route('/start_camera', methods=['GET'])
-def start_camera():
-    # Code to start the camera
-    return "Camera started."
-
-@app.route('/stop_camera', methods=['GET'])
-def stop_camera():
-    # Code to stop the camera
-    return "Camera stopped."
 
 @app.route('/start_audio', methods=['GET'])
 def start_audio():
