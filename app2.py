@@ -99,6 +99,7 @@ def stop_alarm():
     pygame.mixer.music.stop()
     alarm_active = False
 
+
 mic = 1
 threshold = 0.02
 stream = sd.InputStream(device=mic, channels=1, samplerate=44100, blocksize=1024)
@@ -146,6 +147,7 @@ class AudioProcessor:
 # Create instance of AudioProcessor
 audio_processor = AudioProcessor()
 
+
 def generate_frames():
     global alarm_active
 
@@ -189,6 +191,7 @@ def start_audio():
 def stop_audio():
     audio_processor.stop_audio()
     return "Audio stopped."
+
 
 if __name__ == '__main__':
     app.run(debug=True)
