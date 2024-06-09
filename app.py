@@ -12,11 +12,12 @@ from threading import Thread
 import mediapipe as mp
 import tensorflow as tf
 import logging
-from mouth import detect_mouth_opening
+import face_recognition  # Ensure face_recognition is correctly imported
+
+from mouth import start_mouth_detection_with_alarm, detect_mouth_opening
 
 # Initialize Pygame for playing the alarm sound
 pygame.mixer.init()
-
 # Flask app setup
 app = Flask(__name__)
 
@@ -42,6 +43,9 @@ start_talking_time = None
 mic = 1
 threshold = 0.02
 stream = sd.InputStream(device=mic, channels=1, samplerate=44100, blocksize=1024)
+
+# Variable to store camera quality status
+camera_quality_status = ""
 
 class AudioProcessor:
     def __init__(self):
@@ -124,7 +128,6 @@ def detect_head_pose(frame):
             success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
             rmat, jac = cv2.Rodrigues(rot_vec)
             angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
-
             x = angles[0] * 360
             y = angles[1] * 360
 
@@ -140,6 +143,47 @@ def detect_head_pose(frame):
             cv2.putText(image, text, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
     return image
 
+
+def check_face(frame):
+    global alarm_active
+    # Convert the image from BGR color (which OpenCV uses) to RGB color
+    rgb_frame = frame[:, :, ::-1]
+    # Find all the faces in the current frame of video
+    face_locations = face_recognition.face_locations(rgb_frame)
+    if len(face_locations) == 0:
+        if not alarm_active:
+            alarm_active = True
+            start_alarm()
+        return False
+    else:
+        if alarm_active:
+            stop_alarm()
+        return True
+
+def check_lighting(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    mean_brightness = np.mean(gray)
+    if mean_brightness < 50 or mean_brightness > 200:
+        return False
+    return True
+
+def check_blur(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+    if laplacian_var < 100:
+        return False
+    return True
+
+def check_camera_quality(frame):
+    global camera_quality_status
+    camera_quality_status = ""
+    if not check_lighting(frame):
+        camera_quality_status += "Lighting conditions are not ideal. "
+    if not check_blur(frame):
+        camera_quality_status += "Camera is blurry or has oil on it. "
+    if check_lighting(frame) and check_blur(frame):
+        camera_quality_status = "Camera quality is good."
+
 def generate_frames():
     global alarm_active, start_talking_time
 
@@ -150,10 +194,15 @@ def generate_frames():
             break
 
         frame = detect_head_pose(frame)
-        mouth_open = detect_mouth_opening(frame)
-        person_talking = audio_processor.active
 
-        if mouth_open or person_talking:
+        # Check for lighting and blur
+        check_camera_quality(frame)
+
+        if not check_face(frame):
+            # Play alarm if no face detected
+            start_alarm()
+
+        if detect_mouth_opening(frame):
             if start_talking_time is None:
                 start_talking_time = time.time()
             elif time.time() - start_talking_time > TALK_TIME_THRESH and not alarm_active:
@@ -169,19 +218,35 @@ def generate_frames():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', camera_quality_status=camera_quality_status)
 
 @app.route('/video_feed')
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/start_camera', methods=['GET'])
+def start_camera():
+    return "Camera started."
+
+@app.route('/stop_camera', methods=['GET'])
+def stop_camera():
+    return "Camera stopped."
+
+@app.route('/start_audio', methods=['GET'])
+def start_audio():
+    audio_processor.start_audio()
+    return "Audio started."
+
+@app.route('/stop_audio', methods=['GET'])
+def stop_audio():
+    audio_processor.stop_audio()
+    return "Audio stopped."
 
 @app.route('/active_voice_time', methods=['GET'])
 def active_voice_time():
     return jsonify({"active_voice_time": audio_processor.active_voice_time})
 
 if __name__ == '__main__':
-    # Set Flask log level to suppress startup messages
-    log = logging.getLogger('werkzeug')
-    log.setLevel(logging.ERROR)
-
     app.run(debug=True)
+
+
