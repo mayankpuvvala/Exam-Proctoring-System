@@ -1,6 +1,7 @@
 Flask
 numpy
 opencv-python
+cmake
 dlib
 pygame
 sounddevice
