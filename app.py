@@ -12,7 +12,7 @@ from threading import Thread
 import mediapipe as mp
 import tensorflow as tf
 import logging
-import face_recognition  # Ensure face_recognition is correctly imported
+import face_recognition
 
 from mouth import start_mouth_detection_with_alarm, detect_mouth_opening
 
@@ -43,9 +43,6 @@ start_talking_time = None
 mic = 1
 threshold = 0.02
 stream = sd.InputStream(device=mic, channels=1, samplerate=44100, blocksize=1024)
-
-# Variable to store camera quality status
-camera_quality_status = ""
 
 class AudioProcessor:
     def __init__(self):
@@ -128,6 +125,7 @@ def detect_head_pose(frame):
             success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
             rmat, jac = cv2.Rodrigues(rot_vec)
             angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
+
             x = angles[0] * 360
             y = angles[1] * 360
 
@@ -135,14 +133,13 @@ def detect_head_pose(frame):
                 if not alarm_active:
                     alarm_active = True
                     start_alarm()
-            else:
-                if alarm_active:
-                    stop_alarm()
+                else:
+                    if alarm_active:
+                        stop_alarm()
 
-            text = f"x: {int(x)} | y: {int(y)}"
-            cv2.putText(image, text, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                text = f"x: {int(x)} | y: {int(y)}"
+                cv2.putText(image, text, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
     return image
-
 
 def check_face(frame):
     global alarm_active
@@ -175,14 +172,12 @@ def check_blur(frame):
     return True
 
 def check_camera_quality(frame):
-    global camera_quality_status
-    camera_quality_status = ""
     if not check_lighting(frame):
-        camera_quality_status += "Lighting conditions are not ideal. "
+        print("Lighting conditions are not ideal.")
     if not check_blur(frame):
-        camera_quality_status += "Camera is blurry or has oil on it. "
+        print("Camera is blurry or has oil on it.")
     if check_lighting(frame) and check_blur(frame):
-        camera_quality_status = "Camera quality is good."
+        print("Camera quality is good.")
 
 def generate_frames():
     global alarm_active, start_talking_time
@@ -196,7 +191,10 @@ def generate_frames():
         frame = detect_head_pose(frame)
 
         # Check for lighting and blur
-        check_camera_quality(frame)
+        if not check_lighting(frame):
+            print("Lighting conditions are not ideal.")
+        if not check_blur(frame):
+            print("Camera is blurry or has oil on it.")
 
         if not check_face(frame):
             # Play alarm if no face detected
@@ -218,7 +216,7 @@ def generate_frames():
 
 @app.route('/')
 def index():
-    return render_template('index.html', camera_quality_status=camera_quality_status)
+    return render_template('index.html')
 
 @app.route('/video_feed')
 def video_feed():
@@ -246,7 +244,5 @@ def stop_audio():
 def active_voice_time():
     return jsonify({"active_voice_time": audio_processor.active_voice_time})
 
-if __name__ == '__main__':
-    app.run(debug=True)
-
-
+if __name__ == "__main__":
+    app.run(debug=False, use_reloader=False)  # Disable debug and reloader
