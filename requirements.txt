@@ -1,6 +1,8 @@
 Flask
 numpy
 opencv-python
+libopenblas-dev
+liblapack-dev
 cmake
 dlib
 pygame
