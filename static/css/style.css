@@ -1,0 +1,41 @@
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #2b95d3cd; 
+    padding: 0;
+    margin: 0;
+}
+
+#container {
+    max-width: 800px;
+    width: 100%;
+    padding: 30px;
+    background-color: #fff; /* White background */
+    border-radius: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    margin: 50px auto;
+    position: relative;
+}
+
+h1 {
+    color: #333;
+}
+
+p {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #666;
+}
+
+#chart-container {
+    width: 100%;
+    height: 300px;
+    margin-top: 20px;
+}
+
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
