@@ -1,23 +1,26 @@
 import os
-import sys
 import time
 import cv2
-import dlib
 import numpy as np
-from scipy.spatial import distance as dist
-from flask import Flask, jsonify, render_template, Response
+from flask import Flask, jsonify, render_template, Response, send_from_directory
 import pygame
 import sounddevice as sd
 from threading import Thread
 import mediapipe as mp
-import tensorflow as tf
-import logging
+import dlib
 import face_recognition
-
+import logging
 from mouth import start_mouth_detection_with_alarm, detect_mouth_opening
+import queue
 
+status_queue = queue.Queue()
+initial_photo = None  # To store the initial photo
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 # Initialize Pygame for playing the alarm sound
 pygame.mixer.init()
+
 # Flask app setup
 app = Flask(__name__)
 
@@ -44,41 +47,6 @@ mic = 1
 threshold = 0.02
 stream = sd.InputStream(device=mic, channels=1, samplerate=44100, blocksize=1024)
 
-class AudioProcessor:
-    def __init__(self):
-        self.active_voice_time = 0
-        self.active = False
-        self.start_time = None
-
-        self.audio_thread = Thread(target=self.update_active_voice_time)
-        self.audio_thread.daemon = True
-
-    def start_audio(self):
-        global stream
-        stream.start()
-        self.audio_thread.start()
-
-    def stop_audio(self):
-        global stream
-        stream.stop()
-        stream.close()
-
-    def update_active_voice_time(self):
-        global stream
-        while stream.active:
-            data, overflowed = stream.read(1024)
-            rms = np.sqrt(np.mean(data**2))
-
-            if rms > threshold and not self.active:
-                self.active = True
-                self.start_time = time.time()
-            elif rms <= threshold and self.active:
-                self.active = False
-                end_time = time.time()
-                self.active_voice_time += end_time - self.start_time
-
-audio_processor = AudioProcessor()
-
 def start_alarm():
     global alarm_active
     pygame.mixer.music.load("alarm.wav")
@@ -88,6 +56,75 @@ def stop_alarm():
     global alarm_active
     pygame.mixer.music.stop()
     alarm_active = False
+
+def generate_frames():
+    global alarm_active, start_talking_time, initial_photo
+
+    try:
+        camera = cv2.VideoCapture(0)
+        if not camera.isOpened():
+            logging.error("Failed to open camera.")
+            return
+
+        # Capture initial photo
+        if initial_photo is None:
+            success, initial_photo = camera.read()
+            if not success:
+                logging.error("Failed to capture initial photo.")
+                return
+            logging.info("Initial photo captured.")
+
+        while True:
+            success, frame = camera.read()
+            if not success:
+                logging.error("Failed to read frame from camera.")
+                break
+
+            frame = detect_head_pose(frame)
+
+            lighting_status = "Lighting conditions are good."
+            if not check_lighting(frame):
+                lighting_status = "Lighting conditions are not ideal."
+                # logging.info(lighting_status)
+
+            blur_status = "Camera quality is good."
+            if not check_blur(frame):
+                blur_status = "Camera is blurry."
+                # logging.info(blur_status)
+
+            status_queue.put({"lighting": lighting_status, "blur": blur_status})
+
+            if not check_face(frame):
+                start_alarm()
+
+            if detect_mouth_opening(frame):
+                if start_talking_time is None:
+                    start_talking_time = time.time()
+                elif time.time() - start_talking_time > TALK_TIME_THRESH and not alarm_active:
+                    start_alarm()
+            else:
+                start_talking_time = None
+                stop_alarm()
+
+            # Compare current frame with initial photo
+            if initial_photo is not None:
+                if is_tampered(frame, initial_photo):
+                    start_alarm()
+                else:
+                    stop_alarm()
+
+            ret, buffer = cv2.imencode('.jpg', frame)
+            if not ret:
+                logging.error("Failed to encode frame.")
+                break
+
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    except Exception as e:
+        logging.exception("An error occurred while generating frames.")
+    finally:
+        camera.release()
 
 def detect_head_pose(frame):
     global alarm_active
@@ -143,9 +180,7 @@ def detect_head_pose(frame):
 
 def check_face(frame):
     global alarm_active
-    # Convert the image from BGR color (which OpenCV uses) to RGB color
     rgb_frame = frame[:, :, ::-1]
-    # Find all the faces in the current frame of video
     face_locations = face_recognition.face_locations(rgb_frame)
     if len(face_locations) == 0:
         if not alarm_active:
@@ -171,48 +206,18 @@ def check_blur(frame):
         return False
     return True
 
-def check_camera_quality(frame):
-    if not check_lighting(frame):
-        print("Lighting conditions are not ideal.")
-    if not check_blur(frame):
-        print("Camera is blurry or has oil on it.")
-    if check_lighting(frame) and check_blur(frame):
-        print("Camera quality is good.")
+def is_tampered(current_frame, initial_frame):
+    current_face_locations = face_recognition.face_locations(current_frame)
+    initial_face_locations = face_recognition.face_locations(initial_frame)
+    
+    if not current_face_locations or not initial_face_locations:
+        return True
 
-def generate_frames():
-    global alarm_active, start_talking_time
+    current_encoding = face_recognition.face_encodings(current_frame, current_face_locations)[0]
+    initial_encoding = face_recognition.face_encodings(initial_frame, initial_face_locations)[0]
 
-    camera = cv2.VideoCapture(0)
-    while True:
-        success, frame = camera.read()
-        if not success:
-            break
-
-        frame = detect_head_pose(frame)
-
-        # Check for lighting and blur
-        if not check_lighting(frame):
-            print("Lighting conditions are not ideal.")
-        if not check_blur(frame):
-            print("Camera is blurry or has oil on it.")
-
-        if not check_face(frame):
-            # Play alarm if no face detected
-            start_alarm()
-
-        if detect_mouth_opening(frame):
-            if start_talking_time is None:
-                start_talking_time = time.time()
-            elif time.time() - start_talking_time > TALK_TIME_THRESH and not alarm_active:
-                start_alarm()
-        else:
-            start_talking_time = None
-            stop_alarm()
-
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    match = face_recognition.compare_faces([initial_encoding], current_encoding)
+    return not match[0]
 
 @app.route('/')
 def index():
@@ -230,19 +235,39 @@ def start_camera():
 def stop_camera():
     return "Camera stopped."
 
-@app.route('/start_audio', methods=['GET'])
-def start_audio():
-    audio_processor.start_audio()
-    return "Audio started."
+@app.route('/status')
+def status():
+    try:
+        status = status_queue.get_nowait()
+    except queue.Empty:
+        status = {"lighting": "Unknown", "blur": "Unknown"}
+    return jsonify(status)
 
-@app.route('/stop_audio', methods=['GET'])
-def stop_audio():
-    audio_processor.stop_audio()
-    return "Audio stopped."
+@app.route('/capture', methods=['POST'])
+def capture():
+    global initial_photo
+    try:
+        camera = cv2.VideoCapture(0)
+        if not camera.isOpened():
+            logging.error("Failed to open camera.")
+            return "Failed to open camera.", 500
+        success, initial_photo = camera.read()
+        if not success:
+            logging.error("Failed to capture initial photo.")
+            return "Failed to capture initial photo.", 500
+        camera.release()
+        logging.info("Initial photo captured successfully.")
+        return "Initial photo captured successfully."
+    except Exception as e:
+        logging.exception("An error occurred while capturing initial photo.")
+        return "An error occurred while capturing initial photo.", 500
 
-@app.route('/active_voice_time', methods=['GET'])
-def active_voice_time():
-    return jsonify({"active_voice_time": audio_processor.active_voice_time})
+
+@app.route('/stop_exam')
+def stop_exam():
+    # Implement your logic to stop the exam, such as logging the user out or marking the exam as completed
+    return "Exam stopped due to tab switching.", 200
+
 
 if __name__ == "__main__":
     app.run(debug=False, use_reloader=False)  # Disable debug and reloader

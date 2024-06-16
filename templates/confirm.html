@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirm Face</title>
+</head>
+<body>
+    <h1>Confirm Your Face</h1>
+    <img src="{{ image_path }}" width="640" height="480">
+    <form action="/reset" method="post">
+        <button type="submit">Reset Photo</button>
+    </form>
+    <form action="/start_app" method="post">
+        <button type="submit">Start App</button>
+    </form>
+</body>
+</html>

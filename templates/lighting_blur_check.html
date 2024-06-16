@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lighting and Blur Check</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="static\css\style.css">
+</head>
+<body>
+    <div id="container">
+        <h1>Lighting and Blur Check</h1>
+        <button id="check-button">Check Lighting and Blur</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        $('#check-button').click(function() {
+            $.get('/check_lighting_blur', function(data) {
+                var resultText = 'Ideal Lighting: ' + data.ideal_lighting + '<br>' +
+                                 'Brightness: ' + data.brightness.toFixed(2) + '<br>' +
+                                 'Lens Clean: ' + data.lens_clean + '<br>' +
+                                 'Blur: ' + data.blur.toFixed(2);
+                $('#result').html(resultText);
+            });
+        });
+    </script>
+</body>
+</html>
