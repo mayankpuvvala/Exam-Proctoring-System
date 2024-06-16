@@ -1,87 +1,45 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Drowsiness Detection</title>
+    <title>Student Portal</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" type="text/css" href="static/css/style.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #32cd329f; /* Green background */
-            padding: 0;
-            margin: 0;
-            /* overflow: hidden; */
-        }
-
-        #container {
-            max-width: 800px;
-            width: 100%;
-            padding: 30px;
-            background-color: #fff; /* White background */
-            border-radius: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            margin: 50px auto;
-            position: relative;
-        }
-
-        h1 {
-            color: #333;
-        }
-
-        img {
-            max-width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
-        }
-
-        p {
-            margin-top: 20px;
-            font-size: 18px;
-            color: #666;
-        }
-
-        #chart-container {
-            width: 100%;
-            height: 300px;
-            margin-top: 20px;
-        }
-
-        .flower {
+        #status {
             position: absolute;
-            width: 50px;
-            height: 50px;
-            background-image: url('flower.jpg');
-            background-size: cover;
-            animation: spin 4s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            top: 10px;
+            right: 10px;
+            background-color: white;
+            color: black;
+            padding: 10px;
+            border: 1px solid black;
+            border-radius: 5px;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div id="container">
-        <h1>Drowsiness Detection</h1>
-        <img id="video_feed" src="{{ url_for('video_feed') }}">
-        <p id="drowsiness_info"></p>
+        <h1>Student Portal</h1>
+        <img id="video" src="/video_feed" width="640" height="480" alt="Video Error">
+        <br>
+        <button id="capture_button">Capture Initial Photo</button>
+        <p id="status_message"></p>
+        <br>
         <p id="inactive_time">Inactive Time: 0 seconds</p>
-        <p id="audio_info">Active Voice Time: 0.00 seconds</p>
-        <div id="chart-container">
-            <canvas id="frequencyChart"></canvas>
-        </div>
-        <div class="flower" style="top: 10px; left: 10px;"></div>
-        <div class="flower" style="top: 10px; right: 10px;"></div>
-        <div class="flower" style="bottom: 10px; left: 10px;"></div>
-        <div class="flower" style="bottom: 10px; right: 10px;"></div>
+    </div>
+
+    <div id="status">
+        <p id="lighting_status">Lighting: Unknown</p>
+        <p id="blur_status">Blur: Unknown</p>
     </div>
 
     <script>
         var totalInactiveTime = 0;
         var lastActivityTime = Date.now();
+        var tabSwitchCount = 0;
+        var maxTabSwitches = 3; // Maximum allowed tab switches
 
         function updateInactiveTime() {
             var currentTime = Date.now();
@@ -90,6 +48,14 @@
             if (document.visibilityState === 'hidden') {
                 totalInactiveTime += elapsedTime;
                 localStorage.setItem('totalInactiveTime', totalInactiveTime.toString());
+                tabSwitchCount++;
+                if (tabSwitchCount > maxTabSwitches) {
+                    alert("You have switched tabs too many times. The exam will now stop.");
+                    // Take action, like stopping the exam or logging the user out
+                    window.location.href = '/stop_exam'; // Example action
+                } else {
+                    alert("You have switched tabs. Please return to the exam.");
+                }
             } else {
                 totalInactiveTime = parseInt(localStorage.getItem('totalInactiveTime') || '0');
             }
@@ -104,81 +70,28 @@
             if (document.visibilityState === 'hidden') {
                 lastActivityTime = Date.now();
             }
+            updateInactiveTime();
         });
 
         setInterval(updateInactiveTime, 1000);
         updateInactiveTime();
 
-        function updateDetectionInfo(drowsy, activeVoiceTime) {
-            var drowsinessText = drowsy ? 'User is drowsy' : 'User is alert';
-            document.getElementById('drowsiness_info').textContent = drowsinessText;
-            document.getElementById('audio_info').textContent = 'Active Voice Time: ' + activeVoiceTime.toFixed(2) + ' seconds';
+        function updateStatus() {
+            $.get('/status', function(data) {
+                $('#lighting_status').text('Lighting: ' + data.lighting);
+                $('#blur_status').text('Blur: ' + data.blur);
+            });
         }
 
-        var audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        var analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        var bufferLength = analyser.frequencyBinCount;
-        var dataArray = new Uint8Array(bufferLength);
-        var activeVoiceTime = 0;
-        var lastSpeakingTime = Date.now();
+        setInterval(updateStatus, 1000);
 
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function(stream) {
-                var source = audioContext.createMediaStreamSource(stream);
-                source.connect(analyser);
-
-                var audioFrequencyChart = new Chart(document.getElementById('frequencyChart'), {
-                    type: 'line',
-                    data: {
-                        labels: Array.from({ length: bufferLength }, (_, i) => i),
-                        datasets: [{
-                            label: 'Frequency Data',
-                            data: Array(bufferLength).fill(0),
-                            backgroundColor: 'rgba(0, 123, 255, 0.5)',
-                            borderColor: 'rgba(0, 123, 255, 1)',
-                            borderWidth: 1,
-                            fill: false,
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            x: {
-                                display: false,
-                            },
-                            y: {
-                                beginAtZero: true,
-                            }
-                        }
-                    }
+        $(document).ready(function() {
+            $('#capture_button').click(function() {
+                $.post('/capture', function(data) {
+                    $('#status_message').text(data);
                 });
-
-                function analyzeAudio() {
-                    analyser.getByteFrequencyData(dataArray);
-                    var sum = dataArray.reduce((acc, val) => acc + val, 0);
-                    var averageFrequency = sum / bufferLength;
-
-                    // Detect if the user is speaking based on average frequency
-                    var speaking = averageFrequency > 10;  // Threshold for detecting speaking
-                    var currentTime = Date.now();
-                    if (speaking) {
-                        activeVoiceTime += (currentTime - lastSpeakingTime) / 1000;
-                    }
-                    lastSpeakingTime = currentTime;
-
-                    // Update the chart
-                    audioFrequencyChart.data.datasets[0].data = Array.from(dataArray);
-                    audioFrequencyChart.update();
-
-                    // Update the UI with new data
-                    updateDetectionInfo(false, activeVoiceTime);
-                }
-
-                setInterval(analyzeAudio, 1000);
-            })
-            .catch(function(err) {
-                console.error('Error accessing audio stream:', err);
             });
+        });
     </script>
 </body>
 </html>
