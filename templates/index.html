@@ -1,184 +1,312 @@
-<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Drowsiness Detection</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Proctoring System</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css">
     <style>
+        /* body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        #video { width: 100%; border: 1px solid #ddd; }
+        #status { margin-top: 20px; }
+        .status-item { margin-bottom: 10px; }
+        .status-label { font-weight: bold; } */
         body {
             font-family: Arial, sans-serif;
-            background-color: #32cd329f; /* Green background */
+            background-color: #2b95d3cd;
             padding: 0;
             margin: 0;
-            /* overflow: hidden; */
         }
-
-        #container {
+        .container {
             max-width: 800px;
             width: 100%;
             padding: 30px;
-            background-color: #fff; /* White background */
-            border-radius: 20px;
+            background-color: #fff;
+            border-radius: 40px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             text-align: center;
             margin: 50px auto;
             position: relative;
         }
-
         h1 {
             color: #333;
         }
-
-        img {
-            max-width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
-        }
-
-        p {
-            margin-top: 20px;
-            font-size: 18px;
-            color: #666;
-        }
-
-        #chart-container {
+        #video {
             width: 100%;
-            height: 300px;
+            border: 2px solid black;
+            border-radius: 30px;
             margin-top: 20px;
         }
-
-        .flower {
+        #status {
             position: absolute;
-            width: 50px;
-            height: 50px;
-            background-image: url('flower.jpg');
-            background-size: cover;
-            animation: spin 4s linear infinite;
+            top: 10px;
+            right: 10px;
+            background-color: white;
+            color: black;
+            padding: 10px;
+            border: 1px solid black;
+            border-radius: 5px;
+            font-size: 14px;
         }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .status-item {
+            margin-bottom: 10px;
+        }
+        .status-label {
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div id="container">
-        <h1>Drowsiness Detection</h1>
-        <img id="video_feed" src="{{ url_for('video_feed') }}">
-        <p id="drowsiness_info"></p>
-        <p id="inactive_time">Inactive Time: 0 seconds</p>
-        <p id="audio_info">Active Voice Time: 0.00 seconds</p>
-        <div id="chart-container">
-            <canvas id="frequencyChart"></canvas>
+
+    <div class="container">
+        <h1>Monitoring Portal</h1>
+        
+        <div id="registration">
+            <h2>User Registration</h2>
+            <input type="text" id="username" placeholder="Enter your name">
+            <button onclick="capturePhoto()">Capture Photo</button>
+            <button onclick="registerUser()">Register</button>
+            <video id="videoElement" style="display:none;"></video>
+            <canvas id="canvasElement" style="display:none;"></canvas>
+            <img id="capturedPhoto" style="display:none;">
         </div>
-        <div class="flower" style="top: 10px; left: 10px;"></div>
-        <div class="flower" style="top: 10px; right: 10px;"></div>
-        <div class="flower" style="bottom: 10px; left: 10px;"></div>
-        <div class="flower" style="bottom: 10px; right: 10px;"></div>
+    </div>
+    <div id="verification" style="display: none;">
+        <h2>User Verification</h2>
+        <button onclick="verifyUser()">Start Exam</button>
+    </div>
+    <div id="exam" style="display: none;">
+        <h2>Exam in Progress</h2>
+        <img id="video" src="{{ url_for('video_feed') }}" alt="Video Feed">
+    </div>
+        <!-- <img id="video" src="{{ url_for('video_feed') }}" alt="Video Feed"> -->
+        
+    </div>
+    <div id="status">
+        <div class="status-item">
+            <span class="status-label">Lighting:</span>
+            <span id="lighting-status">Loading...</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Blur:</span>
+            <span id="blur-status">Loading...</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Face Detection:</span>
+            <span id="face-status">Loading...</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Tab Switches:</span>
+            <span id="tab-switches">0</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Inactive Time:</span>
+            <span id="inactive-time">0 seconds</span>
+        </div>
     </div>
 
     <script>
-        var totalInactiveTime = 0;
-        var lastActivityTime = Date.now();
+        let tabSwitches = 0;
+        let inactiveTime = 0;
+        let inactiveInterval;
+        let isActive = true;
 
-        function updateInactiveTime() {
-            var currentTime = Date.now();
-            var elapsedTime = currentTime - lastActivityTime;
 
-            if (document.visibilityState === 'hidden') {
-                totalInactiveTime += elapsedTime;
-                localStorage.setItem('totalInactiveTime', totalInactiveTime.toString());
-            } else {
-                totalInactiveTime = parseInt(localStorage.getItem('totalInactiveTime') || '0');
+        let stream;
+let capturedImage;
+
+function capturePhoto() {
+
+    console.log("Capturing photo...");
+    const video = document.getElementById('videoElement');
+    const canvas = document.getElementById('canvasElement');
+    const capturedPhoto = document.getElementById('capturedPhoto');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function(s) {
+            stream = s;
+            video.srcObject = stream;
+            video.play();
+            video.style.display = 'block';
+        })
+        .catch(function(err) {
+            console.log("An error occurred: " + err);
+        });
+
+    video.addEventListener('canplay', function() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        capturedImage = canvas.toDataURL('image/jpeg');
+        capturedPhoto.src = capturedImage;
+        capturedPhoto.style.display = 'block';
+        video.style.display = 'none';
+        if(stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+    }, { once: true });
+}
+
+function registerUser() {
+
+    console.log("Registering user...");
+    const name = $('#username').val();
+    if (!name || !capturedImage) {
+        alert('Please enter a name and capture a photo.');
+        return;
+    }
+
+    $.ajax({
+        url: '/register',
+        type: 'POST',
+        data: { 
+            name: name, 
+            photo: capturedImage
+        },
+        success: function(data) {
+            alert(data.message);
+            $('#registration').hide();
+            $('#verification').show();
+        },
+        error: function(jqXHR) {
+            alert('Error: ' + jqXHR.responseJSON.error);
+        }
+    });
+}
+
+function verifyUser() {
+    const video = document.getElementById('videoElement');
+    const canvas = document.getElementById('canvasElement');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function(s) {
+            stream = s;
+            video.srcObject = stream;
+            video.play();
+        })
+        .catch(function(err) {
+            console.log("An error occurred: " + err);
+        });
+
+    video.addEventListener('canplay', function() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        const verificationImage = canvas.toDataURL('image/jpeg');
+        
+        if(stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+
+        $.ajax({
+            url: '/verify_user',
+            type: 'POST',
+            data: { 
+                photo: verificationImage
+            },
+            success: function(data) {
+                alert(data.message);
+                $('#verification').hide();
+                $('#exam').show();
+                startExam();
+            },
+            error: function(jqXHR) {
+                alert('Error: ' + jqXHR.responseJSON.error);
             }
+        });
+    }, { once: true });
+}
+        function startExam() {
+            setInterval(function() {
+                $.get('/status', function(data) {
+                    $('#status').html(`
+                        Lighting: ${data.lighting}<br>
+                        Image Quality: ${data.blur}<br>
+                        Face Detected: ${data.face_detected}<br>
+                        Verified User: ${data.verified_user}
+                    `);
+                });
+            }, 1000);
+        }
+        function updateStatus() {
+            $.ajax({
+                url: '/status',
+                type: 'GET',
+                success: function(data) {
+                    $('#lighting-status').text(data.lighting);
+                    $('#blur-status').text(data.blur);
+                    $('#face-status').text(data.face_detected ? 'Face Detected' : 'No Face Detected');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching status:', error);
+                    $('#lighting-status').text('Error');
+                    $('#blur-status').text('Error');
+                    $('#face-status').text('Error');
+                }
+            });
+        }
 
-            lastActivityTime = currentTime;
+        function tabSwitch() {
+            $.ajax({
+                url: '/tab_switch',
+                type: 'GET',
+                success: function(data) {
+                    tabSwitches = data.tab_switches;
+                    $('#tab-switches').text(tabSwitches);
+                    if (tabSwitches >= 5) {
+                        alert("Exam stopped due to excessive tab switching.");
+                        window.location.href = '/';  // Redirect to home page or an exam termination page
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error recording tab switch:', error);
+                }
+            });
+        }
 
-            var inactiveSeconds = Math.floor(totalInactiveTime / 1000);
-            document.getElementById('inactive_time').textContent = 'Inactive Time: ' + inactiveSeconds + ' seconds';
+        function startInactiveTimer() {
+            isActive = false;
+            inactiveInterval = setInterval(() => {
+                inactiveTime++;
+                $('#inactive-time').text(inactiveTime + ' seconds');
+            }, 1000);
+        }
+
+        function stopInactiveTimer() {
+            isActive = true;
+            clearInterval(inactiveInterval);
         }
 
         document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'hidden') {
-                lastActivityTime = Date.now();
+            if (document.hidden) {
+                tabSwitch();
+                startInactiveTimer();
+            } else {
+                stopInactiveTimer();
             }
         });
 
-        setInterval(updateInactiveTime, 1000);
-        updateInactiveTime();
-
-        function updateDetectionInfo(drowsy, activeVoiceTime) {
-            var drowsinessText = drowsy ? 'User is drowsy' : 'User is alert';
-            document.getElementById('drowsiness_info').textContent = drowsinessText;
-            document.getElementById('audio_info').textContent = 'Active Voice Time: ' + activeVoiceTime.toFixed(2) + ' seconds';
-        }
-
-        var audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        var analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        var bufferLength = analyser.frequencyBinCount;
-        var dataArray = new Uint8Array(bufferLength);
-        var activeVoiceTime = 0;
-        var lastSpeakingTime = Date.now();
-
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function(stream) {
-                var source = audioContext.createMediaStreamSource(stream);
-                source.connect(analyser);
-
-                var audioFrequencyChart = new Chart(document.getElementById('frequencyChart'), {
-                    type: 'line',
-                    data: {
-                        labels: Array.from({ length: bufferLength }, (_, i) => i),
-                        datasets: [{
-                            label: 'Frequency Data',
-                            data: Array(bufferLength).fill(0),
-                            backgroundColor: 'rgba(0, 123, 255, 0.5)',
-                            borderColor: 'rgba(0, 123, 255, 1)',
-                            borderWidth: 1,
-                            fill: false,
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            x: {
-                                display: false,
-                            },
-                            y: {
-                                beginAtZero: true,
-                            }
-                        }
-                    }
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                $.get('/stop_camera', function(data) {
+                    console.log(data.message);
+                    $('#video').hide();
                 });
+            } else if (event.key === 'e') {
+                $.get('/kill_app', function(data) {
+                    console.log(data.message);
+                    alert("Application terminated.");
+                });
+            }
+        });
 
-                function analyzeAudio() {
-                    analyser.getByteFrequencyData(dataArray);
-                    var sum = dataArray.reduce((acc, val) => acc + val, 0);
-                    var averageFrequency = sum / bufferLength;
+        // Update status every 5 seconds
+        setInterval(updateStatus, 5000);
 
-                    // Detect if the user is speaking based on average frequency
-                    var speaking = averageFrequency > 10;  // Threshold for detecting speaking
-                    var currentTime = Date.now();
-                    if (speaking) {
-                        activeVoiceTime += (currentTime - lastSpeakingTime) / 1000;
-                    }
-                    lastSpeakingTime = currentTime;
-
-                    // Update the chart
-                    audioFrequencyChart.data.datasets[0].data = Array.from(dataArray);
-                    audioFrequencyChart.update();
-
-                    // Update the UI with new data
-                    updateDetectionInfo(false, activeVoiceTime);
-                }
-
-                setInterval(analyzeAudio, 1000);
-            })
-            .catch(function(err) {
-                console.error('Error accessing audio stream:', err);
-            });
+        // Initial status update
+        updateStatus();
     </script>
 </body>
 </html>
