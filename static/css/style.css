@@ -1,27 +1,4 @@
 
-body {
-    font-family: Arial, sans-serif;
-    background-color: #2b95d3cd; 
-    padding: 0;
-    margin: 0;
-}
-
-#container {
-    max-width: 800px;
-    width: 100%;
-    padding: 30px;
-    background-color: #fff; /* White background */
-    border-radius: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    text-align: center;
-    margin: 50px auto;
-    position: relative;
-}
-
-h1 {
-    color: #333;
-}
-
 p {
     margin-top: 20px;
     font-size: 18px;
@@ -38,4 +15,47 @@ p {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+body {
+    font-family: Arial, sans-serif;
+    background-color: #2b95d3cd;
+    padding: 0;
+    margin: 0;
+}
+.container {
+    max-width: 800px;
+    width: 100%;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 40px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    margin: 50px auto;
+    position: relative;
+}
+h1 {
+    color: #333;
+}
+#video {
+    width: 100%;
+    border: 2px solid black;
+    border-radius: 30px;
+    margin-top: 20px;
+}
+#status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: white;
+    color: black;
+    padding: 10px;
+    border: 1px solid black;
+    border-radius: 5px;
+    font-size: 14px;
+}
+.status-item {
+    margin-bottom: 10px;
+}
+.status-label {
+    font-weight: bold;
 }

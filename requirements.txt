@@ -8,6 +8,6 @@ scipy
 mediapipe
 pandas
 matplotlib
-face_recognition
 requests
-streamlit
+imutils
+simpleaudio
