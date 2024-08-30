@@ -1,0 +1,68 @@
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f7fc;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.nav-link {
+    margin-left: 20px;
+    font-size: 1.1rem;
+}
+
+.registration-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 70px);
+}
+
+.registration-card {
+    width: 400px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background-color: #fff;
+    padding: 20px;
+}
+
+.registration-image {
+    max-height: 200px;
+    border-radius: 8px;
+}
+
+.card-body {
+    padding: 30px;
+}
+
+h3 {
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.navbar .navbar-collapse {
+    display: flex;
+    justify-content: center;
+}
+
+.navbar .navbar-nav {
+    flex-direction: row;
+}
+
+.navbar .nav-link {
+    margin-left: 20px;
+    margin-right: 20px;
+}

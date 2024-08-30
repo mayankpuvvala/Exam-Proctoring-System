@@ -11,3 +11,6 @@ matplotlib
 requests
 imutils
 simpleaudio
+pyaudio
+webrtcvad
+flask_cors

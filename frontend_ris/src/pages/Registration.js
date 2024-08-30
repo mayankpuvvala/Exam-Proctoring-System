@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import { Navbar, Nav, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import '../styles/Registration.css';
 
 const Registration = () => {
@@ -80,46 +80,58 @@ const Registration = () => {
     };
 
     return (
-        <div className="registration-container">
-            <Card className="registration-card">
-                <Card.Body>
-                    <h3 className="text-center mb-4">User Registration</h3>
+        <div>
+            <Navbar bg="dark" variant="dark" expand="lg" className="mb-4">
+                <Navbar.Toggle aria-controls="basic-navbar-nav" />
+                <Navbar.Collapse id="basic-navbar-nav">
+                    <Nav className="ml-auto">
+                        <Nav.Link href="/">Home</Nav.Link>
+                        <Nav.Link href="/faceturn">Face Turn</Nav.Link>
+                    </Nav>
+                </Navbar.Collapse>
+            </Navbar>
 
-                    {error && <Alert variant="danger">{error}</Alert>}
-                    {success && <Alert variant="success">{success}</Alert>}
+            <div className="registration-container">
+                <Card className="registration-card">
+                    <Card.Body>
+                        <h3 className="text-center mb-4">User Registration</h3>
 
-                    <Form onSubmit={registerUser}>
-                        <Form.Group controlId="username" className="mb-3">
-                            <Form.Label>Full Name</Form.Label>
-                            <Form.Control
-                                type="text"
-                                placeholder="Enter your full name"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                            />
-                        </Form.Group>
+                        {error && <Alert variant="danger">{error}</Alert>}
+                        {success && <Alert variant="success">{success}</Alert>}
 
-                        <Form.Group controlId="photo" className="mb-3 text-center">
-                            {capturedImage ? (
-                                <img
-                                    src={capturedImage}
-                                    alt="Captured"
-                                    className="img-fluid rounded mb-3 registration-image"
+                        <Form onSubmit={registerUser}>
+                            <Form.Group controlId="username" className="mb-3">
+                                <Form.Label>Full Name</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Enter your full name"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
                                 />
-                            ) : (
-                                <div className="mb-3 text-muted">No photo captured</div>
-                            )}
-                            <Button variant="primary" onClick={capturePhoto} disabled={loading}>
-                                {loading ? <Spinner animation="border" size="sm" /> : 'Capture Photo'}
-                            </Button>
-                        </Form.Group>
+                            </Form.Group>
 
-                        <Button variant="success" type="submit" className="w-100" disabled={loading}>
-                            {loading ? <Spinner animation="border" size="sm" /> : 'Register'}
-                        </Button>
-                    </Form>
-                </Card.Body>
-            </Card>
+                            <Form.Group controlId="photo" className="mb-3 text-center">
+                                {capturedImage ? (
+                                    <img
+                                        src={capturedImage}
+                                        alt="Captured"
+                                        className="img-fluid rounded mb-3 registration-image"
+                                    />
+                                ) : (
+                                    <div className="mb-3 text-muted">No photo captured</div>
+                                )}
+                                <Button variant="primary" onClick={capturePhoto} disabled={loading}>
+                                    {loading ? <Spinner animation="border" size="sm" /> : 'Capture Photo'}
+                                </Button>
+                            </Form.Group>
+
+                            <Button variant="success" type="submit" className="w-100" disabled={loading}>
+                                {loading ? <Spinner animation="border" size="sm" /> : 'Register'}
+                            </Button>
+                        </Form>
+                    </Card.Body>
+                </Card>
+            </div>
         </div>
     );
 };

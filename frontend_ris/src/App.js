@@ -6,6 +6,7 @@ import Verification from './pages/Verification';
 import Exam from './pages/Exam';
 import Status from './pages/Status';
 import { Navbar, Container } from 'react-bootstrap';
+import FaceTurn from './pages/FaceTurn';
 
 function App() {
     return (
@@ -17,6 +18,7 @@ function App() {
             </Navbar>
             <Routes>
                 <Route path="/" element={<Registration />} />
+                <Route path="/faceturn" element={<FaceTurn />} />
                 <Route path="/verification" element={<Verification />} />
                 <Route path="/exam" element={<Exam />} />
                 <Route path="/status" element={<Status />} />
