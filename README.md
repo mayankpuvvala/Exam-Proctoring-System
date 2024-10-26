@@ -1,5 +1,8 @@
 # Watcher: Online Student Monitoring System
 
+## Demo of the project
+[![Watch the demo](https://github.com/mayankpuvvala/Exam-Proctoring-System/blob/main/Watcher_IMG.png)](https://youtu.be/5waUyec8q7s)
+
 ## Description
 
 The **Watcher** is an innovative solution designed to enhance the learning experience during online classes. This project leverages real-time camera input from students' laptops or phones to assess their attentiveness during online meetings. It employs advanced techniques such as attention detection based on eye gaze and head pose, as well as tab activity tracking. Additionally, the system measures the active voice participation of students and analyzes voice signals for frequency and pitch. All results are presented through graphical visualizations for easy interpretation.
