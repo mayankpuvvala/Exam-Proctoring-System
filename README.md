@@ -1,83 +1,98 @@
-# Watcher: Online Student Monitoring System
+# Watcher: Online Student Monitoring and Exam Proctoring System
 
-## Demo of the project
+![Watcher Demo](https://github.com/mayankpuvvala/Exam-Proctoring-System/blob/main/Watcher_IMG.png)
+
+## Demo of the Project
 [![Watch the demo](https://github.com/mayankpuvvala/Exam-Proctoring-System/blob/main/Watcher_IMG.png)](https://youtu.be/5waUyec8q7s)
+
+---
 
 ## Description
 
-The **Watcher** is an innovative solution designed to enhance the learning experience during online classes. This project leverages real-time camera input from students' laptops or phones to assess their attentiveness during online meetings. It employs advanced techniques such as attention detection based on eye gaze and head pose, as well as tab activity tracking. Additionally, the system measures the active voice participation of students and analyzes voice signals for frequency and pitch. All results are presented through graphical visualizations for easy interpretation.
+**Watcher** is a robust solution for online student monitoring and exam proctoring, designed to ensure integrity and engagement during virtual sessions. Leveraging state-of-the-art machine learning, computer vision, and audio processing techniques, Watcher offers advanced features such as real-time behavior analysis, tab activity tracking, and voice participation monitoring.
+
+The system also detects unauthorized behaviors such as the presence of phones, talking, and impersonation during exams. It incorporates custom-trained models to enforce exam security by tracking human count and monitoring for environmental manipulations like low visibility, blur, and lighting exploits. All results are visualized for ease of analysis.
 
 ---
 
 ## Features
 
-- **Real-Time Camera Input**: Capture live video feed from the student's laptop or mobile device.
-- **Attention Detection**: Utilize eye gaze tracking and head pose estimation to determine student attentiveness.
-- **Inactive Tab Time Measurement**: Track the duration a student has spent on inactive browser tabs.
-- **Active Voice Time Measurement**: Monitor the duration of student participation during discussions using microphone input.
-- **Frequency and Pitch Analysis**: Analyze voice signals to determine the frequency and pitch of the student’s contributions.
-- **Graphical Visualization**: Present results and metrics through informative graphs for better understanding and analysis.
+### Student Monitoring
+
+- **Attention Detection**: Monitors attentiveness using eye gaze tracking and head pose estimation.
+- **Inactive Tab Monitoring**: Tracks time spent on inactive browser tabs during online classes.
+- **Voice Participation Analysis**: Measures active speaking time, analyzing frequency and pitch.
+
+### Exam Proctoring
+
+- **Phone Detection**: Identifies phone presence in the video feed using a custom-trained YOLOv11 model.
+- **Human Count Tracking**: Detects the number of individuals in the camera frame to prevent impersonation.
+- **Tab Activity Logging**: Tracks unauthorized tab changes during exams and logs details for supervisors.
+- **Environmental Manipulation Detection**:
+  - **Lighting Issues**: Uses grayscale conversion to adjust brightness dynamically.
+  - **Blur Detection**: Implements Laplacian blur detection to prevent camera manipulation.
 
 ---
 
 ## Technical Stack
 
-### Machine Learning (ML) & Deep Learning (DL)
+### Machine Learning & Deep Learning
 
-- **OpenCV**: Used for image processing and real-time video capture.
-- **TensorFlow/Keras**: For developing and training models for attention detection (if applicable).
-- **Scikit-learn**: For data preprocessing and model evaluation (if applicable).
-- **NumPy/Pandas**: For data manipulation and analysis.
+- **YOLOv11**: Custom-trained model for detecting phones and counting individuals.
+- **MobileNetV2**: Used for facial recognition.
+- **MediaPipe Face Mesh**: For 3D facial landmark detection.
+- **TensorFlow/Keras**: Deep learning frameworks for additional model development.
+- **Scikit-learn**: Preprocessing and model evaluation.
 
-### Computer Vision (CV)
+### Computer Vision
 
-- **Face Detection**: Implemented using Haar cascades or DNN models to detect faces in real-time.
-- **Head Pose Estimation**: Utilizes geometric transformations to estimate head orientation.
-- **Eye Gaze Tracking**: Analyzes eye movement to gauge student focus and attentiveness.
+- **OpenCV**: Real-time image processing and video capture.
+- **PnP Algorithm**: Used for precise face tracking and head pose estimation.
+- **Grayscale Conversion**: For dynamic lighting adjustments.
+- **Laplacian Blur Detection**: Identifies blur to counter camera manipulations.
 
 ### Audio Processing
 
-- **PyAudio**: For capturing and processing microphone input.
-- **Librosa**: For analyzing audio signals, measuring frequency and pitch.
+- **Short-Time Fourier Transform (STFT)**: Detects background noise and speech violations.
+- **Librosa**: Extracts frequency and pitch data for voice analysis.
+- **PyAudio**: Captures and processes audio input.
 
 ### Web Technologies
 
-- **Flask**: A lightweight WSGI web application framework to create the server for handling real-time data.
-- **Socket.IO**: To enable real-time bi-directional communication between the client and the server.
+- **Flask**: Backend framework for handling server-side logic.
+- **Socket.IO**: Enables real-time communication between client and server.
+
+### Visualization
+
+- **Matplotlib/Plotly**: Generates graphical insights for attentiveness, voice participation, and violations.
 
 ---
 
 ## Implementation Overview
 
 ### 1. Real-Time Camera Input
-
-The system captures real-time video using OpenCV's `VideoCapture`, providing continuous frames for analysis.
+Captures video frames using OpenCV for analysis of attention, human count, and environmental conditions.
 
 ### 2. Attention Detection
+Combines facial recognition, eye gaze tracking, and head pose estimation for engagement analysis.
 
-By combining face detection and eye gaze tracking, we determine the student's focus level. Head pose estimation is implemented using facial landmark detection.
+### 3. Exam Security
+- **Human Detection**: Tracks human count using YOLOv11 to prevent impersonation.
+- **Phone Detection**: Detects phones in the camera feed and stops the exam upon identification.
+- **Tab Logging**: Monitors and logs any tab changes during the exam.
 
-### 3. Tab Activity Monitoring
+### 4. Audio Processing
+- **Voice Activity**: Monitors speaking duration using STFT.
+- **Noise Detection**: Identifies background voices to detect unauthorized help.
 
-Browser activity is monitored using JavaScript on the client side, sending periodic updates to the server to log inactive tab time.
-
-### 4. Active Voice Monitoring
-
-Using PyAudio, the application records audio input, processing it to calculate the duration of active voice participation.
-
-### 5. Frequency and Pitch Analysis
-
-Voice signals are analyzed using Librosa to extract key metrics such as frequency and pitch, offering insights into student engagement.
-
-### 6. Graphical Visualization
-
-Results are visualized using libraries like Matplotlib or Plotly, providing real-time feedback through graphs that depict attentiveness, active voice time, and more.
+### 5. Visualization
+Real-time metrics are visualized through graphs, offering insights into attention levels, violations, and other key parameters.
 
 ---
 
-### Prerequisites
+## Prerequisites
 
-Ensure you have Python 3.12 installed, along with the following libraries:
+Ensure you have Python 3.12 installed, along with the necessary libraries:
 
 ```bash
 pip install opencv-python flask flask-socketio numpy pandas tensorflow keras pyaudio librosa matplotlib
