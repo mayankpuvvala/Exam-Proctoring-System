@@ -1,10 +1,8 @@
 # Watcher: Online Student Monitoring and Exam Proctoring System
-
-![Watcher Demo](https://github.com/mayankpuvvala/Exam-Proctoring-System/blob/main/Watcher_IMG.png)
-
 ## Demo of the Project
 [![Watch the demo](https://github.com/mayankpuvvala/Exam-Proctoring-System/blob/main/Watcher_IMG.png)](https://youtu.be/5waUyec8q7s)
 
+Click the above image
 ---
 
 ## Description
